@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/oaooao/capx/internal/config"
@@ -141,5 +142,111 @@ func SetupClaudeCode(configPath string) error {
 	}
 	fmt.Println("\n~/.claude.json now points to capx as the single MCP server.")
 
+	// Scan for project-level .mcp.json files that may conflict with capx.
+	scanProjectMCPFiles(cfg)
+
 	return nil
+}
+
+// scanProjectMCPFiles finds .mcp.json files that contain servers already managed by capx
+// and warns the user about potential duplicates.
+func scanProjectMCPFiles(cfg *config.Config) {
+	home, _ := os.UserHomeDir()
+	claudePath := filepath.Join(home, ".claude.json")
+
+	// Read claude.json to find project paths.
+	data, err := os.ReadFile(claudePath)
+	if err != nil {
+		return
+	}
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return
+	}
+
+	// Collect project paths from claude.json "projects" key.
+	var projectPaths []string
+	if projectsRaw, ok := raw["projects"]; ok {
+		var projects map[string]json.RawMessage
+		if err := json.Unmarshal(projectsRaw, &projects); err == nil {
+			for p := range projects {
+				projectPaths = append(projectPaths, p)
+			}
+		}
+	}
+
+	// Also check current working directory.
+	if cwd, err := os.Getwd(); err == nil {
+		projectPaths = append(projectPaths, cwd)
+	}
+
+	// Deduplicate.
+	seen := make(map[string]bool)
+	var unique []string
+	for _, p := range projectPaths {
+		if !seen[p] {
+			seen[p] = true
+			unique = append(unique, p)
+		}
+	}
+
+	// Scan each project for .mcp.json with conflicting servers.
+	type conflict struct {
+		path    string
+		servers []string
+	}
+	var conflicts []conflict
+
+	for _, projectPath := range unique {
+		mcpPath := filepath.Join(projectPath, ".mcp.json")
+		mcpData, err := os.ReadFile(mcpPath)
+		if err != nil {
+			continue
+		}
+
+		var mcpFile struct {
+			MCPServers map[string]json.RawMessage `json:"mcpServers"`
+		}
+		if err := json.Unmarshal(mcpData, &mcpFile); err != nil {
+			continue
+		}
+		if len(mcpFile.MCPServers) == 0 {
+			continue
+		}
+
+		// Check for overlaps with capx capabilities.
+		var overlapping []string
+		for serverName := range mcpFile.MCPServers {
+			// Check exact match or prefix match (e.g., "XcodeBuildMCP" matches "XcodeBuildMCP/ios").
+			for capName := range cfg.Capabilities {
+				baseName := capName
+				if idx := strings.Index(capName, "/"); idx > 0 {
+					baseName = capName[:idx]
+				}
+				if serverName == capName || serverName == baseName {
+					overlapping = append(overlapping, serverName)
+					break
+				}
+			}
+		}
+
+		if len(overlapping) > 0 {
+			conflicts = append(conflicts, conflict{path: mcpPath, servers: overlapping})
+		}
+	}
+
+	if len(conflicts) == 0 {
+		return
+	}
+
+	fmt.Println("\n⚠ Found project-level .mcp.json files with servers that capx already manages:")
+	for _, c := range conflicts {
+		fmt.Printf("\n  %s:\n", c.path)
+		for _, s := range c.servers {
+			fmt.Printf("    - %s\n", s)
+		}
+	}
+	fmt.Println("\n  These will load alongside capx, causing duplicate tools.")
+	fmt.Println("  To fix: remove these entries from the .mcp.json files above,")
+	fmt.Println("  or clear them with: echo '{\"mcpServers\":{}}' > <path>")
 }
