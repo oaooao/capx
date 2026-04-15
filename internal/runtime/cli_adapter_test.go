@@ -37,16 +37,47 @@ func TestCLIAdapterStart(t *testing.T) {
 		t.Errorf("expected 2 tools, got %d", len(tools))
 	}
 
-	// Check tool names are prefixed.
+	// Check exact tool names.
 	names := adapter.ToolNames()
-	if len(names) != 2 {
-		t.Errorf("expected 2 tool names, got %d", len(names))
+	nameSet := make(map[string]bool)
+	for _, n := range names {
+		nameSet[n] = true
 	}
 
-	expectedPrefix := "test_cli_"
-	for _, name := range names {
-		if len(name) < len(expectedPrefix) || name[:len(expectedPrefix)] != expectedPrefix {
-			t.Errorf("tool name %q should have prefix %q", name, expectedPrefix)
+	if !nameSet["test_cli_hello"] {
+		t.Error("missing expected tool 'test_cli_hello'")
+	}
+	if !nameSet["test_cli_version"] {
+		t.Error("missing expected tool 'test_cli_version'")
+	}
+	if len(names) != 2 {
+		t.Errorf("expected exactly 2 tool names, got %d: %v", len(names), names)
+	}
+
+	// Verify tool schema: find the hello tool and check its params.
+	for _, st := range tools {
+		if st.Tool.Name == "test_cli_hello" {
+			// The tool should have an inputSchema with "name" property.
+			schema := st.Tool.InputSchema
+			props := schema.Properties
+			if props == nil {
+				t.Error("expected non-nil properties map")
+				break
+			}
+			if _, hasName := props["name"]; !hasName {
+				t.Error("hello tool should have 'name' parameter in schema")
+			}
+			// Check required includes "name".
+			found := false
+			for _, r := range schema.Required {
+				if r == "name" {
+					found = true
+				}
+			}
+			if !found {
+				t.Error("hello tool's 'name' param should be required")
+			}
+			break
 		}
 	}
 }

@@ -266,6 +266,81 @@ func TestShutdown(t *testing.T) {
 	}
 }
 
+func TestEnableUnknownType(t *testing.T) {
+	rt := newTestRuntime(
+		map[string]*config.Capability{
+			"x": {Type: "unknown_type", Description: "bad type"},
+		},
+		map[string]*config.Scene{"default": {AutoEnable: []string{}}},
+	)
+
+	err := rt.Enable(context.Background(), "x")
+	if err == nil {
+		t.Error("expected error for unknown capability type")
+	}
+}
+
+func TestEnableFailedStatusTracking(t *testing.T) {
+	// A CLI capability with no tools defined will fail to start.
+	rt := newTestRuntime(
+		map[string]*config.Capability{
+			"broken": {Type: "cli", Command: "nonexistent", Description: "broken tool", Tools: map[string]*config.CLITool{}},
+		},
+		map[string]*config.Scene{"default": {AutoEnable: []string{}}},
+	)
+
+	err := rt.Enable(context.Background(), "broken")
+	if err == nil {
+		t.Error("expected error for CLI with no tools")
+	}
+
+	// Verify it shows as failed in List.
+	infos := rt.List()
+	if len(infos) != 1 {
+		t.Fatalf("expected 1 info, got %d", len(infos))
+	}
+	if infos[0].Status != StatusFailed {
+		t.Errorf("expected failed status, got %q", infos[0].Status)
+	}
+	if infos[0].Error == "" {
+		t.Error("failed capability should have error message")
+	}
+}
+
+func TestEnableByScenePartialFailure(t *testing.T) {
+	// Scene references one good and one bad capability.
+	rt := newTestRuntime(
+		map[string]*config.Capability{
+			"good": {Type: "cli", Description: "works", Tools: map[string]*config.CLITool{
+				"run": {Description: "run", Args: []string{"echo", "ok"}},
+			}},
+			"bad": {Type: "cli", Description: "broken", Tools: map[string]*config.CLITool{}},
+		},
+		map[string]*config.Scene{
+			"mixed": {AutoEnable: []string{"good", "bad"}},
+		},
+	)
+
+	// EnableByScene should not fail entirely — it logs warnings and continues.
+	err := rt.EnableByScene(context.Background(), "mixed")
+	if err != nil {
+		t.Fatalf("EnableByScene should not return error on partial failure: %v", err)
+	}
+
+	infos := rt.List()
+	statusMap := make(map[string]CapabilityStatus)
+	for _, info := range infos {
+		statusMap[info.Name] = info.Status
+	}
+
+	if statusMap["good"] != StatusEnabled {
+		t.Error("'good' should be enabled despite 'bad' failing")
+	}
+	if statusMap["bad"] != StatusFailed {
+		t.Error("'bad' should be in failed state")
+	}
+}
+
 func TestGenerateDescription(t *testing.T) {
 	rt := newTestRuntime(
 		map[string]*config.Capability{
