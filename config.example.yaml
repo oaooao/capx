@@ -1,0 +1,52 @@
+capabilities:
+  context7:
+    type: mcp
+    transport: http
+    url: https://mcp.context7.com/mcp
+    description: "文档查询"
+    tags: [docs]
+
+  XcodeBuildMCP/ios:
+    type: mcp
+    transport: stdio
+    command: xcodebuildmcp
+    args: ["mcp"]
+    env:
+      XCODEBUILDMCP_ENABLED_WORKFLOWS: "simulator,ui-automation,logging"
+    description: "Xcode iOS 模拟器构建"
+    tags: [ios, xcode]
+
+  webx:
+    type: cli
+    command: webx
+    description: "Web 内容读取和搜索"
+    tags: [web]
+    tools:
+      read:
+        description: "读取任意 URL 的内容"
+        args: ["read", "{{url}}", "--format", "markdown"]
+        params:
+          url: { type: string, required: true, description: "要读取的 URL" }
+      search:
+        description: "跨平台搜索"
+        args: ["search", "{{query}}", "--platform", "{{platform}}"]
+        params:
+          query: { type: string, required: true, description: "搜索关键词" }
+          platform: { type: string, required: true, description: "搜索平台", enum: [hn, reddit, youtube, twitter] }
+
+  deja-memory:
+    type: mcp
+    transport: stdio
+    command: /path/to/deja-mcp
+    args: []
+    disabled: true  # 完全不可见
+
+scenes:
+  default:
+    auto_enable: [context7, webx]
+  ios-dev:
+    auto_enable: [context7, XcodeBuildMCP/ios, webx]
+  full:
+    auto_enable: [all]
+
+default_scene: default
