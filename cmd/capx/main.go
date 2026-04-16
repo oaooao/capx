@@ -26,6 +26,8 @@ func main() {
 		cmdServe(configPath)
 	case "list":
 		cmdList(configPath)
+	case "scenes":
+		cmdScenes(configPath)
 	case "scene":
 		cmdScene(configPath)
 	case "add":
@@ -92,6 +94,17 @@ func cmdList(configPath string) {
 			tags = " [" + strings.Join(cap.Tags, ", ") + "]"
 		}
 		fmt.Printf("  %-30s %s — %s%s\n", name, cap.Type, cap.Description, tags)
+	}
+}
+
+func cmdScenes(configPath string) {
+	cfg, err := config.Load(configPath)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	for name := range cfg.Scenes {
+		fmt.Println(name)
 	}
 }
 
