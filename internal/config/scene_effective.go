@@ -14,29 +14,28 @@ type EffectiveCap struct {
 // EffectiveScene resolves a scene name into the ordered list of capabilities
 // that should be active when the scene is selected.
 //
-// B2 scope: we read the scene's own AutoEnable (required + optional) and
-// resolve each name against inline scene.Capabilities (preferred) then the
-// global cfg.Capabilities. We do NOT yet walk extends chains — that lands
-// in B3 (§A.6 extends: DFS linearization + cycle detection).
+// Flow:
+//  1. ExpandScene walks the extends chain (§A.6 DFS + cycle detect) and
+//     merges required/optional lists + inline capabilities per the rules.
+//  2. For each name in the expanded AutoEnable, resolve the cap:
+//     inline scene.Capabilities wins over global cfg.Capabilities (§A.8).
 //
-// Rules:
-//   - inline scene.Capabilities[name] wins over cfg.Capabilities[name]
-//     (§A.8: scene-inline is highest precedence for same name)
-//   - required names missing from both sources → error (scene unusable)
-//   - optional names missing → skipped silently (Agent workbench tolerates
-//     holes in optional cap)
-//   - duplicate names across required and optional → required wins
-//   - "all" legacy sentinel (v0.1): single required entry "all" expands to
-//     every non-disabled cfg.Capabilities as optional
+// Errors:
+//   - extends cycle or missing parent → error from ExpandScene
+//   - required name missing from both inline and global → error
+//   - optional name missing → skipped silently
+//   - required cap disabled → error; optional disabled → skipped
+//   - legacy "all" sentinel (v0.1 single entry "all") expands to every
+//     non-disabled cfg.Capabilities as optional
 func (c *Config) EffectiveScene(sceneName string) ([]EffectiveCap, error) {
-	scene, ok := c.Scenes[sceneName]
-	if !ok {
-		return nil, fmt.Errorf("scene %q not found", sceneName)
+	expanded, err := c.ExpandScene(sceneName)
+	if err != nil {
+		return nil, err
 	}
 
-	// Legacy "all" sentinel — preserve v0.1 semantics.
-	allNames := scene.AutoEnable.All()
-	if len(allNames) == 1 && allNames[0] == "all" {
+	// Legacy "all" sentinel.
+	all := expanded.AutoEnable.All()
+	if len(all) == 1 && all[0] == "all" {
 		out := make([]EffectiveCap, 0, len(c.Capabilities))
 		for name, cap := range c.Capabilities {
 			if cap.Disabled {
@@ -47,7 +46,7 @@ func (c *Config) EffectiveScene(sceneName string) ([]EffectiveCap, error) {
 		return out, nil
 	}
 
-	total := len(scene.AutoEnable.Required) + len(scene.AutoEnable.Optional)
+	total := len(expanded.AutoEnable.Required) + len(expanded.AutoEnable.Optional)
 	seen := make(map[string]bool, total)
 	out := make([]EffectiveCap, 0, total)
 
@@ -58,10 +57,8 @@ func (c *Config) EffectiveScene(sceneName string) ([]EffectiveCap, error) {
 		seen[name] = true
 
 		var target *Capability
-		if scene.Capabilities != nil {
-			if inline, ok := scene.Capabilities[name]; ok {
-				target = inline
-			}
+		if inline, ok := expanded.Capabilities[name]; ok {
+			target = inline
 		}
 		if target == nil {
 			target = c.Capabilities[name]
@@ -82,12 +79,12 @@ func (c *Config) EffectiveScene(sceneName string) ([]EffectiveCap, error) {
 		return nil
 	}
 
-	for _, name := range scene.AutoEnable.Required {
+	for _, name := range expanded.AutoEnable.Required {
 		if err := resolve(name, true); err != nil {
 			return nil, err
 		}
 	}
-	for _, name := range scene.AutoEnable.Optional {
+	for _, name := range expanded.AutoEnable.Optional {
 		if err := resolve(name, false); err != nil {
 			return nil, err
 		}
