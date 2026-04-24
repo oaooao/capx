@@ -19,11 +19,7 @@ const Version = "1.0.0"
 func Serve(cfg *config.Config, scene string) error {
 	logger := log.New(log.Writer(), "[capx] ", log.LstdFlags)
 
-	mcpServer := server.NewMCPServer(
-		"capx",
-		Version,
-		server.WithToolCapabilities(true),
-	)
+	mcpServer := newCapxMCPServer()
 
 	rt := runtime.New(cfg, mcpServer, logger)
 
@@ -39,6 +35,27 @@ func Serve(cfg *config.Config, scene string) error {
 	// Run stdio server. Shutdown on exit.
 	defer rt.Shutdown()
 	return server.ServeStdio(mcpServer)
+}
+
+func newCapxMCPServer() *server.MCPServer {
+	return server.NewMCPServer(
+		"capx",
+		Version,
+		server.WithToolCapabilities(true),
+		server.WithInstructions(BuildInstructions()),
+	)
+}
+
+func BuildInstructions() string {
+	return strings.TrimSpace(`
+capx is an Agent Capability Runtime. It manages MCP servers and CLI tools behind one MCP connection.
+
+At the start of a session, call scene_info to inspect the current workbench: active scene, ready capabilities, failed capabilities, and degraded state.
+
+Scenes shape the agent's default tool choices; they are not hard filters. If a task needs a capability that is not currently ready, use search to discover candidates, describe to inspect one, then enable it for this session. Use set_scene when the whole task context changes.
+
+set_scene returns ok, rejected, or partial_failure. Always inspect failed[] and degradation fields before assuming the switch succeeded.
+`)
 }
 
 // stringArg safely extracts a string-typed tool argument, returning "" for
@@ -83,9 +100,8 @@ func registerManagementTools(s *server.MCPServer, rt *runtime.Runtime, cfg *conf
 			}, nil
 		}
 
-		// Return updated description showing new state.
 		return &mcp.CallToolResult{
-			Content: []mcp.Content{mcp.NewTextContent(fmt.Sprintf("✓ Enabled %s\n\n%s", name, rt.GenerateDescription()))},
+			Content: []mcp.Content{mcp.NewTextContent(fmt.Sprintf("✓ Enabled %s\n\n%s", name, rt.GenerateStateSummary()))},
 		}, nil
 	})
 
@@ -111,7 +127,7 @@ func registerManagementTools(s *server.MCPServer, rt *runtime.Runtime, cfg *conf
 		}
 
 		return &mcp.CallToolResult{
-			Content: []mcp.Content{mcp.NewTextContent(fmt.Sprintf("✓ Disabled %s\n\n%s", name, rt.GenerateDescription()))},
+			Content: []mcp.Content{mcp.NewTextContent(fmt.Sprintf("✓ Disabled %s\n\n%s", name, rt.GenerateStateSummary()))},
 		}, nil
 	})
 

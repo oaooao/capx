@@ -341,7 +341,7 @@ func TestEnableByScenePartialFailure(t *testing.T) {
 	}
 }
 
-func TestGenerateDescription(t *testing.T) {
+func TestGenerateStateSummary(t *testing.T) {
 	rt := newTestRuntime(
 		map[string]*config.Capability{
 			"a": {Type: "cli", Description: "tool A", Tools: map[string]*config.CLITool{
@@ -355,7 +355,7 @@ func TestGenerateDescription(t *testing.T) {
 	ctx := context.Background()
 	rt.EnableByScene(ctx, "default")
 
-	desc := rt.GenerateDescription()
+	desc := rt.GenerateStateSummary()
 	if desc == "" {
 		t.Error("description should not be empty")
 	}

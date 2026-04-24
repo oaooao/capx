@@ -343,11 +343,11 @@ func (r *Runtime) SetScene(ctx context.Context, sceneName string) (*SetSceneResu
 	r.mu.Lock()
 	// Group plans by action for the prescribed ordering.
 	var (
-		restarts      []SwitchPlan
-		refreshes     []SwitchPlan
-		enables       []SwitchPlan
-		disables      []SwitchPlan
-		keeps         []SwitchPlan
+		restarts       []SwitchPlan
+		refreshes      []SwitchPlan
+		enables        []SwitchPlan
+		disables       []SwitchPlan
+		keeps          []SwitchPlan
 		failedOptional = make(map[string]bool) // Phase 1 optional failures — don't re-attempt in Phase 2
 	)
 	for _, fe := range result.Failed {
@@ -723,8 +723,8 @@ func (r *Runtime) Shutdown() {
 	r.active = make(map[string]*activeEntry)
 }
 
-// GenerateDescription builds the dynamic server description.
-func (r *Runtime) GenerateDescription() string {
+// GenerateStateSummary builds a dynamic summary of the current runtime state.
+func (r *Runtime) GenerateStateSummary() string {
 	infos := r.List()
 
 	var sb strings.Builder
