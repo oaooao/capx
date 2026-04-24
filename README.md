@@ -33,6 +33,35 @@ capx init --agent claude-code    # or: --agent codex
 CAPX_SCENE=default claude
 ```
 
+## Agent-Assisted Setup
+
+Paste one of these prompts to your AI agent to get started:
+
+**First-time install:**
+
+> Install capx (Agent Capability Runtime) for me:
+> 1. Run: `go install github.com/oaooao/capx/cmd/capx@latest`
+> 2. Run: `capx init --agent claude-code`
+> 3. Restart this session so capx connects.
+> After restart, verify by calling `mcp__capx__scene_info`.
+
+**Add a new MCP capability:**
+
+> I want to add [NAME] to capx. Help me:
+> 1. Search if it exists: `mcp__capx__search { query: "[NAME]" }`
+> 2. If not found, add it to capabilities.yaml with description and keywords
+> 3. If this MCP has 30+ tools, suggest splitting by workflow into separate capabilities
+
+**Switch work context:**
+
+> Switch my capx scene to [SCENE_NAME].
+> If you don't know available scenes, run: `capx scene list`
+
+> **Tip**: If the MCP you're adding exposes many tools with distinct workflows
+> (like XcodeBuildMCP's simulator / ui-automation / debugging), split it into
+> multiple capabilities — one per workflow. This improves discoverability and
+> lets you enable only what you need.
+
 Inside the agent session you now have:
 
 ```
