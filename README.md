@@ -262,14 +262,14 @@ Migration is FS-atomic (two `rename(2)` calls with rollback), resolves symlinks
 
 ## Documentation
 
-- [User guide + how-it-works](https://github.com/oaooao/capx) (see `docs/` when published)
-- Full design spec: `projects/capx/reference/[design]-20260424-capx-v0.2-platform.md` (in Axiom; to be published alongside capx)
-- Companion skill: [`skills/capx/SKILL.md`](skills/capx/SKILL.md)
+- Capability authoring guide: [`docs/AUTHORING.md`](docs/AUTHORING.md)
+- Dump schema (v1): [`schemas/dump-v1.json`](schemas/dump-v1.json)
+- Companion skill for AI agents: [`skills/capx/SKILL.md`](skills/capx/SKILL.md)
 
 ## Status
 
-v0.2 is stable for personal use. Open-source preparation (docs site, release
-binaries, `go install` publishing) is next.
+v0.2 is stable for personal use. Expect rough edges around multi-platform
+packaging, CI, and release binaries — contributions welcome.
 
 ## License
 
