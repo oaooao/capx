@@ -47,10 +47,14 @@ type SetSceneResult struct {
 	Status         SwitchStatus   `json:"status"`
 	ActiveScene    string         `json:"active_scene"`
 	RequestedScene string         `json:"requested_scene"`
-	At             time.Time      `json:"at"`
-	Applied        []AppliedEntry `json:"applied"`
-	Failed         []FailedEntry  `json:"failed"`
-	Reason         *string        `json:"reason"` // null on ok
+	// FromScene records the scene active before this switch was attempted —
+	// empty string if the runtime had no prior scene. Needed by scene_info
+	// (§A.11) so the Agent can decide whether to rollback.
+	FromScene string         `json:"from_scene"`
+	At        time.Time      `json:"at"`
+	Applied   []AppliedEntry `json:"applied"`
+	Failed    []FailedEntry  `json:"failed"`
+	Reason    *string        `json:"reason"` // null on ok
 }
 
 // AppliedEntry records a successfully applied plan step.

@@ -207,9 +207,14 @@ func (r *Runtime) Disable(name string) error {
 // capability surface per §A.12 "最小破坏" rule.
 func (r *Runtime) SetScene(ctx context.Context, sceneName string) (*SetSceneResult, error) {
 	started := time.Now()
+	r.mu.RLock()
+	entrySceneName := r.current
+	r.mu.RUnlock()
+
 	result := &SetSceneResult{
 		RequestedScene: sceneName,
-		ActiveScene:    r.current,
+		ActiveScene:    entrySceneName,
+		FromScene:      entrySceneName,
 		At:             started,
 		Applied:        []AppliedEntry{},
 		Failed:         []FailedEntry{},
