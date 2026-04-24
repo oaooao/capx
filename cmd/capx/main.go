@@ -34,6 +34,8 @@ func main() {
 		cmdAdd(configPath)
 	case "setup":
 		cmdSetup(configPath)
+	case "init":
+		cmdInit()
 	case "version":
 		fmt.Printf("capx %s\n", version)
 	case "help", "--help", "-h":
@@ -214,6 +216,38 @@ func cmdSetup(configPath string) {
 	}
 
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func cmdInit() {
+	opts := setup.InitOptions{}
+	for i := 2; i < len(os.Args); i++ {
+		switch os.Args[i] {
+		case "--global":
+			opts.Global = true
+		case "--add-scenes":
+			opts.AddScenes = true
+		case "--force":
+			opts.Force = true
+		case "--agent":
+			if i+1 >= len(os.Args) {
+				fmt.Fprintln(os.Stderr, "--agent requires a value (claude-code | codex)")
+				os.Exit(1)
+			}
+			opts.Agent = os.Args[i+1]
+			i++
+		default:
+			if strings.HasPrefix(os.Args[i], "--agent=") {
+				opts.Agent = strings.TrimPrefix(os.Args[i], "--agent=")
+			} else {
+				fmt.Fprintf(os.Stderr, "unknown flag: %s\n", os.Args[i])
+				os.Exit(1)
+			}
+		}
+	}
+	if err := setup.Init(opts); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}
