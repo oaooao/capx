@@ -3,6 +3,24 @@
 All notable changes to capx are documented here.
 Format follows [Keep a Changelog](https://keepachangelog.com/).
 
+## [1.0.1] — 2026-04-25
+
+### Added
+
+- Initialize instructions now list all available scene names
+  (alphabetical) so an agent can discover which scenes exist from the
+  session-start context, without needing to pull `set_scene`'s tool
+  schema via ToolSearch first.
+
+  Before: the agent knew "there are scenes" but had to query for names.
+  After: the instructions end with an `Available scenes:` line so
+  casual requests like "switch to the macos scene" map to the concrete
+  scene name immediately.
+
+  `BuildInstructions` now takes a `*config.Config` (pass `nil` in unit
+  tests that don't need the scenes section). `newCapxMCPServer`
+  signature updated accordingly.
+
 ## [1.0.0] — 2026-04-25
 
 First public release. Agent Capability Runtime — one MCP server, dynamic
@@ -57,3 +75,4 @@ control of MCP servers and CLI tools.
 - MIT licensed
 
 [1.0.0]: https://github.com/oaooao/capx/releases/tag/v1.0.0
+[1.0.1]: https://github.com/oaooao/capx/releases/tag/v1.0.1

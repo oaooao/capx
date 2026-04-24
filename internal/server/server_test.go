@@ -7,10 +7,11 @@ import (
 	"testing"
 
 	"github.com/mark3labs/mcp-go/mcp"
+	"github.com/oaooao/capx/internal/config"
 )
 
-func TestBuildInstructions(t *testing.T) {
-	instructions := BuildInstructions()
+func TestBuildInstructions_FixedContent(t *testing.T) {
+	instructions := BuildInstructions(nil)
 	for _, want := range []string{
 		"Agent Capability Runtime",
 		"call scene_info",
@@ -33,10 +34,56 @@ func TestBuildInstructions(t *testing.T) {
 			t.Fatalf("instructions should not include dynamic config detail %q, got:\n%s", notWant, instructions)
 		}
 	}
+
+	// With nil cfg, the scenes section is omitted.
+	if strings.Contains(instructions, "Available scenes") {
+		t.Error("nil cfg should omit the Available scenes section")
+	}
+}
+
+func TestBuildInstructions_ListsScenesAlphabetically(t *testing.T) {
+	cfg := &config.Config{
+		Scenes: map[string]*config.Scene{
+			"writing":   {},
+			"default":   {},
+			"macos-dev": {},
+			"ios-dev":   {},
+		},
+	}
+	instructions := BuildInstructions(cfg)
+
+	if !strings.Contains(instructions, "Available scenes") {
+		t.Fatal("instructions should include 'Available scenes' section with scene names")
+	}
+	for _, name := range []string{"default", "ios-dev", "macos-dev", "writing"} {
+		if !strings.Contains(instructions, name) {
+			t.Errorf("instructions should list scene %q, got:\n%s", name, instructions)
+		}
+	}
+
+	// Order is deterministic (alphabetical) so that identical cfgs produce
+	// identical instructions across invocations.
+	want := "default, ios-dev, macos-dev, writing"
+	if !strings.Contains(instructions, want) {
+		t.Errorf("scenes should be alphabetically sorted; want contains %q, got:\n%s", want, instructions)
+	}
+}
+
+func TestBuildInstructions_EmptyScenes(t *testing.T) {
+	cfg := &config.Config{Scenes: map[string]*config.Scene{}}
+	instructions := BuildInstructions(cfg)
+	if strings.Contains(instructions, "Available scenes") {
+		t.Error("empty scenes map should omit the Available scenes section")
+	}
 }
 
 func TestInitializeIncludesInstructions(t *testing.T) {
-	s := newCapxMCPServer()
+	cfg := &config.Config{
+		Scenes: map[string]*config.Scene{
+			"default": {},
+		},
+	}
+	s := newCapxMCPServer(cfg)
 	req := mcp.JSONRPCRequest{
 		JSONRPC: mcp.JSONRPC_VERSION,
 		ID:      mcp.NewRequestId(int64(1)),
@@ -45,7 +92,7 @@ func TestInitializeIncludesInstructions(t *testing.T) {
 			ProtocolVersion: mcp.LATEST_PROTOCOL_VERSION,
 			ClientInfo: mcp.Implementation{
 				Name:    "test-client",
-				Version: "1.0.0",
+				Version: "1.0.1",
 			},
 		},
 	}
@@ -63,7 +110,7 @@ func TestInitializeIncludesInstructions(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected InitializeResult, got %T", resp.Result)
 	}
-	if result.Instructions != BuildInstructions() {
-		t.Fatalf("instructions mismatch:\nwant:\n%s\n\ngot:\n%s", BuildInstructions(), result.Instructions)
+	if result.Instructions != BuildInstructions(cfg) {
+		t.Fatalf("instructions mismatch:\nwant:\n%s\n\ngot:\n%s", BuildInstructions(cfg), result.Instructions)
 	}
 }

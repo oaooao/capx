@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
@@ -13,13 +14,13 @@ import (
 	"github.com/oaooao/capx/internal/runtime"
 )
 
-const Version = "1.0.0"
+const Version = "1.0.1"
 
 // Serve starts the capx MCP server on stdio.
 func Serve(cfg *config.Config, scene string) error {
 	logger := log.New(log.Writer(), "[capx] ", log.LstdFlags)
 
-	mcpServer := newCapxMCPServer()
+	mcpServer := newCapxMCPServer(cfg)
 
 	rt := runtime.New(cfg, mcpServer, logger)
 
@@ -38,17 +39,24 @@ func Serve(cfg *config.Config, scene string) error {
 	return server.ServeStdio(mcpServer)
 }
 
-func newCapxMCPServer() *server.MCPServer {
+func newCapxMCPServer(cfg *config.Config) *server.MCPServer {
 	return server.NewMCPServer(
 		"capx",
 		Version,
 		server.WithToolCapabilities(true),
-		server.WithInstructions(BuildInstructions()),
+		server.WithInstructions(BuildInstructions(cfg)),
 	)
 }
 
-func BuildInstructions() string {
-	return strings.TrimSpace(`
+// BuildInstructions composes the instructions string injected into the MCP
+// initialize response. It includes the fixed behavioral guidance plus a
+// dynamic list of available scene names so the agent can discover scenes
+// without having to pull set_scene's tool schema first.
+//
+// cfg may be nil (used in unit tests that don't need the scene list); when
+// nil, the Available scenes section is omitted.
+func BuildInstructions(cfg *config.Config) string {
+	base := strings.TrimSpace(`
 capx is an Agent Capability Runtime. It manages MCP servers and CLI tools behind one MCP connection.
 
 At the start of a session, call scene_info to inspect the current workbench: active scene, ready capabilities, failed capabilities, and degraded state.
@@ -61,6 +69,18 @@ Beyond named requests: if the user describes a capability need (e.g. "UI testing
 
 set_scene returns ok, rejected, or partial_failure. Always inspect failed[] and degradation fields before assuming the switch succeeded.
 `)
+
+	if cfg == nil || len(cfg.Scenes) == 0 {
+		return base
+	}
+
+	names := make([]string, 0, len(cfg.Scenes))
+	for name := range cfg.Scenes {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+
+	return base + "\n\nAvailable scenes (pass one of these names to set_scene):\n  " + strings.Join(names, ", ")
 }
 
 // stringArg safely extracts a string-typed tool argument, returning "" for
