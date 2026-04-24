@@ -70,8 +70,32 @@ func resolveConfigPath() string {
 	return config.DefaultConfigPath()
 }
 
+// configPathExplicit reports whether --config or CAPX_CONFIG was set.
+// When true, commands should honor the legacy single-file path; otherwise
+// they should use LoadMerged to walk v0.2 scope discovery.
+func configPathExplicit() bool {
+	for _, arg := range os.Args {
+		if arg == "--config" || strings.HasPrefix(arg, "--config=") {
+			return true
+		}
+	}
+	return os.Getenv("CAPX_CONFIG") != ""
+}
+
+// loadConfig picks the right loader: legacy Load when the user pinned a
+// specific v0.1 file via --config / CAPX_CONFIG, LoadMerged (scope discovery)
+// otherwise. This keeps read-only commands consistent with `capx dump` and
+// with the MCP server's runtime view.
+func loadConfig(configPath string) (*config.Config, error) {
+	if configPathExplicit() {
+		return config.Load(configPath)
+	}
+	pwd, _ := os.Getwd()
+	return config.LoadMerged(pwd)
+}
+
 func cmdServe(configPath string) {
-	cfg, err := config.Load(configPath)
+	cfg, err := loadConfig(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
@@ -89,7 +113,7 @@ func cmdServe(configPath string) {
 }
 
 func cmdList(configPath string) {
-	cfg, err := config.Load(configPath)
+	cfg, err := loadConfig(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
@@ -106,7 +130,7 @@ func cmdList(configPath string) {
 }
 
 func cmdScenes(configPath string) {
-	cfg, err := config.Load(configPath)
+	cfg, err := loadConfig(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
@@ -126,7 +150,7 @@ func cmdScene(configPath string) {
 		os.Exit(1)
 	}
 
-	cfg, err := config.Load(configPath)
+	cfg, err := loadConfig(configPath)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
