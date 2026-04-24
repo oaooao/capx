@@ -31,6 +31,7 @@ func Serve(cfg *config.Config, scene string) error {
 	if err := rt.EnableByScene(ctx, scene); err != nil {
 		logger.Printf("warning: failed to enable scene %s: %v", scene, err)
 	}
+	rt.RegisterPlaceholders()
 
 	// Run stdio server. Shutdown on exit.
 	defer rt.Shutdown()

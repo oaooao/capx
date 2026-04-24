@@ -47,10 +47,11 @@ type Runtime struct {
 	mcpServer *server.MCPServer
 	logger    *log.Logger
 
-	mu      sync.RWMutex
-	active  map[string]*activeEntry // name → currently enabled state
-	failed  map[string]string       // name → error message (for the "failed" status surface)
-	current string                  // name of the currently active scene ("" before any SetScene)
+	mu           sync.RWMutex
+	active       map[string]*activeEntry // name → currently enabled state
+	failed       map[string]string       // name → error message (for the "failed" status surface)
+	placeholders map[string]string       // capability name → placeholder tool name
+	current      string                  // name of the currently active scene ("" before any SetScene)
 
 	// Both fields mirror §A.11 scene_info semantics:
 	//   - lastSwitch records the most recent set_scene attempt (incl. rejected)
@@ -77,11 +78,12 @@ type Adapter interface {
 // New creates a new Runtime.
 func New(cfg *config.Config, mcpServer *server.MCPServer, logger *log.Logger) *Runtime {
 	return &Runtime{
-		cfg:       cfg,
-		mcpServer: mcpServer,
-		logger:    logger,
-		active:    make(map[string]*activeEntry),
-		failed:    make(map[string]string),
+		cfg:          cfg,
+		mcpServer:    mcpServer,
+		logger:       logger,
+		active:       make(map[string]*activeEntry),
+		failed:       make(map[string]string),
+		placeholders: make(map[string]string),
 	}
 }
 
@@ -164,6 +166,7 @@ func (r *Runtime) Enable(ctx context.Context, name string) error {
 	if len(tools) > 0 {
 		r.mcpServer.AddTools(tools...)
 	}
+	r.removePlaceholder(name)
 
 	r.logger.Printf("enabled: %s (%d tools)", name, len(tools))
 	return nil
@@ -187,6 +190,8 @@ func (r *Runtime) Disable(name string) error {
 	if err := entry.adapter.Stop(); err != nil {
 		r.logger.Printf("warning: error stopping %s: %v", name, err)
 	}
+	r.registerPlaceholder(name)
+
 	r.logger.Printf("disabled: %s", name)
 	return nil
 }
@@ -451,6 +456,7 @@ func (r *Runtime) SetScene(ctx context.Context, sceneName string) (*SetSceneResu
 
 	// Commit shadows (enables).
 	for _, s := range shadows {
+		r.removePlaceholderLocked(s.plan.Name)
 		newFp, _ := config.Fingerprints(s.plan.NewCap)
 		r.active[s.plan.Name] = &activeEntry{
 			capability:  s.plan.NewCap,
@@ -465,6 +471,7 @@ func (r *Runtime) SetScene(ctx context.Context, sceneName string) (*SetSceneResu
 	}
 
 	// Disables — skipped on required-restart + rollback-failed combos.
+	var disabledNames []string
 	if !skipDisable {
 		for _, p := range disables {
 			entry := r.active[p.Name]
@@ -479,6 +486,7 @@ func (r *Runtime) SetScene(ctx context.Context, sceneName string) (*SetSceneResu
 				r.logger.Printf("disable %s warning: %v", p.Name, err)
 			}
 			delete(r.active, p.Name)
+			disabledNames = append(disabledNames, p.Name)
 			result.Applied = append(result.Applied, AppliedEntry{Name: p.Name, Action: ActionDisable})
 		}
 	} else {
@@ -517,6 +525,10 @@ func (r *Runtime) SetScene(ctx context.Context, sceneName string) (*SetSceneResu
 	}
 	result.ActiveScene = r.current
 	r.mu.Unlock()
+
+	for _, name := range disabledNames {
+		r.registerPlaceholder(name)
+	}
 
 	// Stable ordering for caller consumption.
 	sort.Slice(result.Applied, func(i, j int) bool {
