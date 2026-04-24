@@ -121,3 +121,14 @@ func TestValidateAllCapabilities_SelfAliasAllowed(t *testing.T) {
 		t.Errorf("self-alias should not conflict, got %v", err)
 	}
 }
+
+func TestValidateName_RejectsDoubleUnderscore(t *testing.T) {
+	c := &Capability{Type: "mcp", Command: "npx"}
+	err := ValidateAndInferTransport("my__cap", c)
+	if err == nil {
+		t.Fatal("expected error for name containing __")
+	}
+	if !strings.Contains(err.Error(), "__") {
+		t.Errorf("error should mention __, got: %v", err)
+	}
+}

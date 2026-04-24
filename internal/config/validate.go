@@ -2,6 +2,7 @@ package config
 
 import (
 	"fmt"
+	"strings"
 )
 
 // ValidateAndInferTransport applies the §A.5 deterministic rules:
@@ -14,6 +15,12 @@ import (
 // On success, cap.Transport is populated (even if it was omitted in YAML) so
 // downstream consumers never have to re-run inference.
 func ValidateAndInferTransport(name string, c *Capability) error {
+	if strings.Contains(name, "__") {
+		return fmt.Errorf(
+			"capability %q: name must not contain `__` (reserved as namespace separator between capability and tool in exposed MCP tool names)",
+			name,
+		)
+	}
 	switch c.Type {
 	case "":
 		return fmt.Errorf("capability %q: missing required field `type`", name)
