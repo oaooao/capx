@@ -56,6 +56,8 @@ Scenes shape the agent's default tool choices; they are not hard filters. If a t
 
 If the user asks to use, call, invoke, run, or launch a named MCP, CLI, command, tool, or capability, and that named capability is not already visible in the current tool set or you are unsure, proactively search capx for it before giving up or substituting another tool.
 
+Beyond named requests: if the user describes a capability need (e.g. "UI testing", "browser automation", "documentation lookup") and you are unsure whether current tools cover it, scan deferred tools prefixed mcp__capx__<name> (without a further __<tool> segment) — these are declared-but-inactive capabilities whose descriptions summarize what they offer. If a description matches the need, call it with action "enable" to activate. If still unclear, use search with keywords from the user's intent.
+
 set_scene returns ok, rejected, or partial_failure. Always inspect failed[] and degradation fields before assuming the switch succeeded.
 `)
 }

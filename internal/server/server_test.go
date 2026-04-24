@@ -18,6 +18,9 @@ func TestBuildInstructions(t *testing.T) {
 		"search to discover candidates",
 		"If the user asks to use, call, invoke, run, or launch",
 		"named MCP, CLI, command, tool, or capability",
+		"Beyond named requests",
+		"describes a capability need",
+		"declared-but-inactive capabilities",
 		"set_scene returns ok, rejected, or partial_failure",
 	} {
 		if !strings.Contains(instructions, want) {
