@@ -1,0 +1,13 @@
+type: mcp
+transport: stdio
+command: npx
+args:
+  - -y
+  - "@modelcontextprotocol/server-filesystem"
+  - /workspace
+env:
+  LOG_LEVEL: debug
+  FOO: "1"
+required_env:
+  - HOME
+  - USER

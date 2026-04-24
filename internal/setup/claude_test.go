@@ -154,7 +154,7 @@ func TestSetupClaudeCode_DoesNotOverwriteExistingCaps(t *testing.T) {
 		Capabilities: map[string]*config.Capability{
 			"context7": {Type: "mcp", Transport: "http", URL: "https://custom.url/mcp", Description: "custom"},
 		},
-		Scenes:       map[string]*config.Scene{"default": {AutoEnable: []string{"context7"}}},
+		Scenes:       map[string]*config.Scene{"default": {AutoEnable: config.AutoEnable{Optional: []string{"context7"}}}},
 		DefaultScene: "default",
 	}
 	config.Save(existing, configPath)

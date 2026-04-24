@@ -1,0 +1,26 @@
+{
+  "cli-diff-args-same-tools": {
+    "process_hash": "25fce9d1d6fac45e8b78def9640d9f8579cbafe4645169358d8f6b774ef122ea",
+    "tools_hash": "0d2bb17c03d86402e02e3bc79e6871f903a3138eb4f790a4358d087c93a26bd9"
+  },
+  "cli-same-tools-diff-description": {
+    "process_hash": "32da39c973cfb53ccc0823210e73809e33141acdd449c81b73a7307cf9b5799c",
+    "tools_hash": "b1f73f81869cfda7cbb731581a3da44303359677bb18e2ceb606bb93096e1901"
+  },
+  "cli-with-tools": {
+    "process_hash": "32da39c973cfb53ccc0823210e73809e33141acdd449c81b73a7307cf9b5799c",
+    "tools_hash": "0d2bb17c03d86402e02e3bc79e6871f903a3138eb4f790a4358d087c93a26bd9"
+  },
+  "explicit-empty-mcp-http": {
+    "process_hash": "126887d9d3b6c87d21b3be7453a4891fce542c2400c237041063efb85eabbfcd",
+    "tools_hash": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+  },
+  "minimal-mcp-http": {
+    "process_hash": "126887d9d3b6c87d21b3be7453a4891fce542c2400c237041063efb85eabbfcd",
+    "tools_hash": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+  },
+  "stdio-mcp-with-env": {
+    "process_hash": "2277e33970ece589d0d9f2e28cc52a0032a373b4fd5031d434dece0246d18abc",
+    "tools_hash": "74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b"
+  }
+}

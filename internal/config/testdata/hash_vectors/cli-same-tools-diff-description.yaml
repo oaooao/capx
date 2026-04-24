@@ -1,0 +1,27 @@
+# Process-level identical to cli-with-tools.yaml but tool description differs.
+# Expected: same process_hash, different tools_hash.
+type: cli
+command: webx
+description: Unified web runtime
+tools:
+  webx_read:
+    description: Read and extract content (with caching)
+    args:
+      - read
+    params:
+      url:
+        type: string
+        required: true
+        description: Target URL
+      format:
+        type: string
+        required: false
+        enum: [markdown, json]
+  webx_search:
+    description: Search across platforms
+    args:
+      - search
+    params:
+      query:
+        type: string
+        required: true

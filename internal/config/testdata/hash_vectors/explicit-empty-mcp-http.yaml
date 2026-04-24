@@ -1,0 +1,6 @@
+type: mcp
+transport: http
+url: https://mcp.context7.com/mcp
+args: []
+env: {}
+required_env: []

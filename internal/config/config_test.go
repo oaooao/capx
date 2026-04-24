@@ -123,7 +123,7 @@ func TestSaveAndReload(t *testing.T) {
 		Capabilities: map[string]*Capability{
 			"test": {Type: "mcp", Transport: "http", URL: "https://example.com", Description: "test"},
 		},
-		Scenes:       map[string]*Scene{"default": {AutoEnable: []string{"test"}}},
+		Scenes:       map[string]*Scene{"default": {AutoEnable: AutoEnable{Optional: []string{"test"}}}},
 		DefaultScene: "default",
 	}
 
@@ -197,8 +197,8 @@ func TestResolveScene(t *testing.T) {
 			"c": {Type: "mcp", Disabled: true},
 		},
 		Scenes: map[string]*Scene{
-			"default": {AutoEnable: []string{"a"}},
-			"full":    {AutoEnable: []string{"all"}},
+			"default": {AutoEnable: AutoEnable{Optional: []string{"a"}}},
+			"full":    {AutoEnable: AutoEnable{Optional: []string{"all"}}},
 		},
 	}
 

@@ -127,15 +127,47 @@ func registerManagementTools(s *server.MCPServer, rt *runtime.Runtime, cfg *conf
 			}, nil
 		}
 
-		if err := rt.SetScene(ctx, sceneName); err != nil {
+		// SetScene always returns a structured result; err is non-nil only on
+		// StatusRejected, in which case the result carries the diagnostic.
+		result, _ := rt.SetScene(ctx, sceneName)
+		payload, mErr := json.MarshalIndent(result, "", "  ")
+		if mErr != nil {
 			return &mcp.CallToolResult{
-				Content: []mcp.Content{mcp.NewTextContent(fmt.Sprintf("error: %v", err))},
+				Content: []mcp.Content{mcp.NewTextContent(fmt.Sprintf("error encoding result: %v", mErr))},
 				IsError: true,
 			}, nil
 		}
-
+		isError := result.Status == runtime.StatusRejected
 		return &mcp.CallToolResult{
-			Content: []mcp.Content{mcp.NewTextContent(fmt.Sprintf("✓ Switched to scene %q\n\n%s", sceneName, rt.GenerateDescription()))},
+			Content: []mcp.Content{mcp.NewTextContent(string(payload))},
+			IsError: isError,
+		}, nil
+	})
+
+	// scene_info — cross-agent portable scene summary (§A.11).
+	// Agents are encouraged to call this once at session start to understand
+	// the current workbench, and again after any set_scene or enable/disable
+	// to re-read the ready/failed classification.
+	sceneInfoTool := mcp.NewTool("scene_info",
+		mcp.WithDescription(
+			"Return structured metadata for the currently active capx scene: "+
+				"description, ready/failed capability lists, degradation status, "+
+				"and a summary of the last scene switch. Recommended to call once "+
+				"at session start to understand the available workbench.",
+		),
+		mcp.WithReadOnlyHintAnnotation(true),
+	)
+	s.AddTool(sceneInfoTool, func(_ context.Context, _ mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		info := rt.SceneInfo()
+		payload, err := json.MarshalIndent(info, "", "  ")
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{mcp.NewTextContent(fmt.Sprintf("error encoding scene_info: %v", err))},
+				IsError: true,
+			}, nil
+		}
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{mcp.NewTextContent(string(payload))},
 		}, nil
 	})
 }
