@@ -35,6 +35,9 @@ func LoadMerged(pwd string) (*Config, error) {
 		}
 		cfg := mergeScopes(nil, scope)
 		cfg.ScopeRoots = map[ScopeKind]string{ScopeKindGlobal: disc.CAPXHome}
+		if err := ValidateAllCapabilities(cfg); err != nil {
+			return nil, err
+		}
 		return cfg, nil
 	}
 
@@ -82,6 +85,13 @@ func LoadMerged(pwd string) (*Config, error) {
 	}
 	if projectScope != nil {
 		cfg.ScopeRoots[ScopeKindProject] = projectScope.RootDir
+	}
+
+	// Per §A.5, transport inference and alias uniqueness are enforced at load
+	// time so runtime can assume a fully canonicalized Capability. Validation
+	// mutates Transport in-place to fill inferred values.
+	if err := ValidateAllCapabilities(cfg); err != nil {
+		return nil, err
 	}
 
 	return cfg, nil
