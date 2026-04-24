@@ -361,18 +361,25 @@ func printUsage() {
 	fmt.Println(`capx — Agent Capability Runtime
 
 Usage:
-  capx serve                  Start MCP server (stdio)
-  capx list                   List all configured capabilities
-  capx scene list             List all scenes
-  capx add <name> [options]   Add a capability to config
-  capx setup claude-code      Migrate Claude Code to use capx
-  capx setup codex            Migrate Codex CLI to use capx
-  capx version                Print version
+  capx serve                           Start MCP server (stdio)
+  capx list                            List all configured capabilities
+  capx scene list                      List all scenes
+  capx scenes                          Scene names, one per line (shell completion)
+  capx add <name> [options]            Add a capability to config
+
+  capx init [--global] [--add-scenes]  Initialize .capx/ scope
+  capx init --agent <name>             Register capx with an agent (claude-code | codex)
+  capx dump [--scene <n>] [--format json|yaml] [--config <dir>]
+                                       Authoritative merged view (v1 schema)
+  capx migrate [--dry-run]             Convert ~/.config/capx/config.yaml → v0.2 structure
+  capx setup claude-code | codex       Legacy agent setup (superseded by init --agent)
+  capx version                         Print version
 
 Flags:
-  --config <path>             Config file path (default: ~/.config/capx/config.yaml)
+  --config <path>             v0.1 config file path (default: ~/.config/capx/config.yaml)
 
 Environment:
-  CAPX_CONFIG                 Config file path override
+  CAPX_HOME                   Single-scope override (bypasses global+project discovery)
+  CAPX_CONFIG                 Legacy v0.1 config file path override
   CAPX_SCENE                  Scene to use at startup`)
 }
