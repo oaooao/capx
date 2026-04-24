@@ -4,11 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/oaooao/capx/internal/config"
 	capxserver "github.com/oaooao/capx/internal/server"
 	"github.com/oaooao/capx/internal/setup"
+	"gopkg.in/yaml.v3"
 )
 
 const version = "1.0.0"
@@ -34,6 +36,12 @@ func main() {
 		cmdAdd(configPath)
 	case "setup":
 		cmdSetup(configPath)
+	case "init":
+		cmdInit()
+	case "dump":
+		cmdDump()
+	case "migrate":
+		cmdMigrate()
 	case "version":
 		fmt.Printf("capx %s\n", version)
 	case "help", "--help", "-h":
@@ -214,6 +222,136 @@ func cmdSetup(configPath string) {
 	}
 
 	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func cmdDump() {
+	var (
+		scene      string
+		format     = "json"
+		configDir  string
+		schemaVer  = config.DumpSchemaVersion
+	)
+	for i := 2; i < len(os.Args); i++ {
+		a := os.Args[i]
+		switch {
+		case a == "--scene" && i+1 < len(os.Args):
+			scene = os.Args[i+1]
+			i++
+		case strings.HasPrefix(a, "--scene="):
+			scene = strings.TrimPrefix(a, "--scene=")
+		case a == "--format" && i+1 < len(os.Args):
+			format = os.Args[i+1]
+			i++
+		case strings.HasPrefix(a, "--format="):
+			format = strings.TrimPrefix(a, "--format=")
+		case a == "--config" && i+1 < len(os.Args):
+			configDir = os.Args[i+1]
+			i++
+		case strings.HasPrefix(a, "--config="):
+			configDir = strings.TrimPrefix(a, "--config=")
+		case a == "--schema-version" && i+1 < len(os.Args):
+			v, err := strconv.Atoi(os.Args[i+1])
+			if err != nil {
+				fmt.Fprintf(os.Stderr, "--schema-version expects integer, got %q\n", os.Args[i+1])
+				os.Exit(1)
+			}
+			schemaVer = v
+			i++
+		default:
+			fmt.Fprintf(os.Stderr, "unknown flag: %s\n", a)
+			os.Exit(1)
+		}
+	}
+	if schemaVer != config.DumpSchemaVersion {
+		fmt.Fprintf(os.Stderr, "unsupported schema version %d (this capx supports %d)\n",
+			schemaVer, config.DumpSchemaVersion)
+		os.Exit(1)
+	}
+
+	pwd, _ := os.Getwd()
+	if configDir != "" {
+		// --config overrides discovery: treat the path as CAPX_HOME for
+		// this invocation.
+		os.Setenv("CAPX_HOME", configDir)
+	}
+	cfg, err := config.LoadMerged(pwd)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	dump, err := config.Dump(cfg, scene, version)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		os.Exit(1)
+	}
+	switch format {
+	case "json":
+		payload, _ := json.MarshalIndent(dump, "", "  ")
+		fmt.Println(string(payload))
+	case "yaml":
+		payload, err := yaml.Marshal(dump)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "yaml encode: %v\n", err)
+			os.Exit(1)
+		}
+		fmt.Print(string(payload))
+	default:
+		fmt.Fprintf(os.Stderr, "unsupported --format %q (json | yaml)\n", format)
+		os.Exit(1)
+	}
+}
+
+func cmdMigrate() {
+	opts := setup.MigrateOptions{}
+	for i := 2; i < len(os.Args); i++ {
+		switch os.Args[i] {
+		case "--dry-run":
+			opts.DryRun = true
+		default:
+			fmt.Fprintf(os.Stderr, "unknown flag: %s\n", os.Args[i])
+			os.Exit(1)
+		}
+	}
+	report, err := setup.Migrate(opts)
+	if report != nil {
+		payload, _ := json.MarshalIndent(report, "", "  ")
+		fmt.Println(string(payload))
+	}
+	if err != nil {
+		os.Exit(1)
+	}
+}
+
+func cmdInit() {
+	opts := setup.InitOptions{}
+	for i := 2; i < len(os.Args); i++ {
+		switch os.Args[i] {
+		case "--global":
+			opts.Global = true
+		case "--add-scenes":
+			opts.AddScenes = true
+		case "--force":
+			opts.Force = true
+		case "--agent":
+			if i+1 >= len(os.Args) {
+				fmt.Fprintln(os.Stderr, "--agent requires a value (claude-code | codex)")
+				os.Exit(1)
+			}
+			opts.Agent = os.Args[i+1]
+			i++
+		default:
+			if strings.HasPrefix(os.Args[i], "--agent=") {
+				opts.Agent = strings.TrimPrefix(os.Args[i], "--agent=")
+			} else {
+				fmt.Fprintf(os.Stderr, "unknown flag: %s\n", os.Args[i])
+				os.Exit(1)
+			}
+		}
+	}
+	if err := setup.Init(opts); err != nil {
 		fmt.Fprintf(os.Stderr, "error: %v\n", err)
 		os.Exit(1)
 	}

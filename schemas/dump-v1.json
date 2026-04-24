@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://capx.dev/schemas/dump-v1.json",
+  "title": "capx dump v1",
+  "description": "Authoritative JSON shape produced by `capx dump`. Consumers (prompt-easy, typefree, CI validators) MUST rely on this instead of re-implementing capx's merge rules.",
+  "type": "object",
+  "required": ["schema_version", "generated_at", "capx_version", "config_sources", "default_scene", "active_scene", "capabilities", "scenes", "warnings"],
+  "properties": {
+    "schema_version": {"type": "integer", "const": 1},
+    "generated_at": {"type": "string", "format": "date-time"},
+    "capx_version": {"type": "string"},
+    "config_sources": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["layer", "path"],
+        "properties": {
+          "layer": {"enum": ["global", "project"]},
+          "path":  {"type": "string"}
+        }
+      }
+    },
+    "default_scene": {"type": "string"},
+    "active_scene": {"type": ["string", "null"]},
+    "capabilities": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/capability"}
+    },
+    "scenes": {
+      "type": "object",
+      "additionalProperties": {"$ref": "#/$defs/scene"}
+    },
+    "warnings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["kind", "message"],
+        "properties": {
+          "kind":    {"type": "string"},
+          "message": {"type": "string"},
+          "path":    {"type": "string"}
+        }
+      }
+    }
+  },
+  "$defs": {
+    "capability": {
+      "type": "object",
+      "required": ["type", "process_hash", "tools_hash", "source"],
+      "properties": {
+        "type":         {"enum": ["mcp", "cli"]},
+        "transport":    {"type": ["string", "null"], "enum": ["stdio", "http", null]},
+        "command":      {"type": ["string", "null"]},
+        "args":         {"type": ["array", "null"], "items": {"type": "string"}},
+        "url":          {"type": ["string", "null"]},
+        "env":          {"type": ["object", "null"], "additionalProperties": {"type": "string"}},
+        "tools":        {"type": ["object", "null"]},
+        "description":  {"type": ["string", "null"]},
+        "aliases":      {"type": ["array", "null"], "items": {"type": "string"}},
+        "keywords":     {"type": ["array", "null"], "items": {"type": "string"}},
+        "tags":         {"type": ["array", "null"], "items": {"type": "string"}},
+        "disabled":     {"type": "boolean"},
+        "required_env": {"type": ["array", "null"], "items": {"type": "string"}},
+        "process_hash": {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "tools_hash":   {"type": "string", "pattern": "^sha256:[0-9a-f]{64}$"},
+        "source":       {"type": "string"},
+        "overridden_by": {
+          "type": ["object", "null"],
+          "properties": {
+            "layer": {"type": "string"},
+            "name":  {"type": "string"}
+          }
+        }
+      }
+    },
+    "scene": {
+      "type": "object",
+      "required": ["auto_enable"],
+      "properties": {
+        "description":      {"type": "string"},
+        "extends":          {"type": ["array", "null"], "items": {"type": "string"}},
+        "extends_resolved": {"type": ["array", "null"], "items": {"type": "string"}},
+        "auto_enable": {
+          "type": "object",
+          "properties": {
+            "required": {"type": ["array", "null"], "items": {"type": "string"}},
+            "optional": {"type": ["array", "null"], "items": {"type": "string"}}
+          }
+        },
+        "inline_capability_names": {"type": ["array", "null"], "items": {"type": "string"}},
+        "source": {"type": "string"}
+      }
+    }
+  }
+}
