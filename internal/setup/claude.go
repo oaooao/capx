@@ -57,7 +57,7 @@ func SetupClaudeCode(configPath string) error {
 		// Create new config if it doesn't exist.
 		cfg = &config.Config{
 			Capabilities: make(map[string]*config.Capability),
-			Scenes:       map[string]*config.Scene{"default": {AutoEnable: []string{}}},
+			Scenes:       map[string]*config.Scene{"default": {AutoEnable: config.AutoEnable{}}},
 			DefaultScene: "default",
 		}
 	}

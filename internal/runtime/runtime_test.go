@@ -49,7 +49,7 @@ func newTestRuntime(caps map[string]*config.Capability, scenes map[string]*confi
 func TestListEmpty(t *testing.T) {
 	rt := newTestRuntime(
 		map[string]*config.Capability{},
-		map[string]*config.Scene{"default": {AutoEnable: []string{}}},
+		map[string]*config.Scene{"default": {AutoEnable: config.AutoEnable{}}},
 	)
 	infos := rt.List()
 	if len(infos) != 0 {
@@ -63,7 +63,7 @@ func TestListShowsDisabledStatus(t *testing.T) {
 			"a": {Type: "mcp", Description: "test a"},
 			"b": {Type: "mcp", Description: "test b", Disabled: true},
 		},
-		map[string]*config.Scene{"default": {AutoEnable: []string{}}},
+		map[string]*config.Scene{"default": {AutoEnable: config.AutoEnable{}}},
 	)
 
 	infos := rt.List()
@@ -88,7 +88,7 @@ func TestEnableDisableLifecycle(t *testing.T) {
 				}},
 			}},
 		},
-		map[string]*config.Scene{"default": {AutoEnable: []string{}}},
+		map[string]*config.Scene{"default": {AutoEnable: config.AutoEnable{}}},
 	)
 
 	ctx := context.Background()
@@ -139,7 +139,7 @@ func TestEnableDisableLifecycle(t *testing.T) {
 func TestEnableUnknownCapability(t *testing.T) {
 	rt := newTestRuntime(
 		map[string]*config.Capability{},
-		map[string]*config.Scene{"default": {AutoEnable: []string{}}},
+		map[string]*config.Scene{"default": {AutoEnable: config.AutoEnable{}}},
 	)
 
 	err := rt.Enable(context.Background(), "nonexistent")
@@ -153,7 +153,7 @@ func TestEnableDisabledCapability(t *testing.T) {
 		map[string]*config.Capability{
 			"x": {Type: "mcp", Disabled: true},
 		},
-		map[string]*config.Scene{"default": {AutoEnable: []string{}}},
+		map[string]*config.Scene{"default": {AutoEnable: config.AutoEnable{}}},
 	)
 
 	err := rt.Enable(context.Background(), "x")
@@ -173,8 +173,8 @@ func TestEnableByScene(t *testing.T) {
 			}},
 		},
 		map[string]*config.Scene{
-			"default": {AutoEnable: []string{"a"}},
-			"both":    {AutoEnable: []string{"a", "b"}},
+			"default": {AutoEnable: config.AutoEnable{Optional: []string{"a"}}},
+			"both":    {AutoEnable: config.AutoEnable{Optional: []string{"a", "b"}}},
 		},
 	)
 
@@ -217,8 +217,8 @@ func TestSetScene(t *testing.T) {
 			}},
 		},
 		map[string]*config.Scene{
-			"scene1": {AutoEnable: []string{"a"}},
-			"scene2": {AutoEnable: []string{"b"}},
+			"scene1": {AutoEnable: config.AutoEnable{Optional: []string{"a"}}},
+			"scene2": {AutoEnable: config.AutoEnable{Optional: []string{"b"}}},
 		},
 	)
 
@@ -250,7 +250,7 @@ func TestShutdown(t *testing.T) {
 				"run": {Description: "run", Args: []string{"echo", "hi"}},
 			}},
 		},
-		map[string]*config.Scene{"default": {AutoEnable: []string{"a"}}},
+		map[string]*config.Scene{"default": {AutoEnable: config.AutoEnable{Optional: []string{"a"}}}},
 	)
 
 	ctx := context.Background()
@@ -271,7 +271,7 @@ func TestEnableUnknownType(t *testing.T) {
 		map[string]*config.Capability{
 			"x": {Type: "unknown_type", Description: "bad type"},
 		},
-		map[string]*config.Scene{"default": {AutoEnable: []string{}}},
+		map[string]*config.Scene{"default": {AutoEnable: config.AutoEnable{}}},
 	)
 
 	err := rt.Enable(context.Background(), "x")
@@ -286,7 +286,7 @@ func TestEnableFailedStatusTracking(t *testing.T) {
 		map[string]*config.Capability{
 			"broken": {Type: "cli", Command: "nonexistent", Description: "broken tool", Tools: map[string]*config.CLITool{}},
 		},
-		map[string]*config.Scene{"default": {AutoEnable: []string{}}},
+		map[string]*config.Scene{"default": {AutoEnable: config.AutoEnable{}}},
 	)
 
 	err := rt.Enable(context.Background(), "broken")
@@ -317,7 +317,7 @@ func TestEnableByScenePartialFailure(t *testing.T) {
 			"bad": {Type: "cli", Description: "broken", Tools: map[string]*config.CLITool{}},
 		},
 		map[string]*config.Scene{
-			"mixed": {AutoEnable: []string{"good", "bad"}},
+			"mixed": {AutoEnable: config.AutoEnable{Optional: []string{"good", "bad"}}},
 		},
 	)
 
@@ -349,7 +349,7 @@ func TestGenerateDescription(t *testing.T) {
 			}},
 			"b": {Type: "mcp", Description: "tool B"},
 		},
-		map[string]*config.Scene{"default": {AutoEnable: []string{"a"}}},
+		map[string]*config.Scene{"default": {AutoEnable: config.AutoEnable{Optional: []string{"a"}}}},
 	)
 
 	ctx := context.Background()

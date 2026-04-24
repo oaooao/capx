@@ -71,7 +71,7 @@ func SetupCodex(configPath string) error {
 	if err != nil {
 		cfg = &config.Config{
 			Capabilities: make(map[string]*config.Capability),
-			Scenes:       map[string]*config.Scene{"default": {AutoEnable: []string{}}},
+			Scenes:       map[string]*config.Scene{"default": {AutoEnable: config.AutoEnable{}}},
 			DefaultScene: "default",
 		}
 	}
