@@ -41,6 +41,13 @@ func Serve(cfg *config.Config, scene string) error {
 	return server.ServeStdio(mcpServer)
 }
 
+// stringArg safely extracts a string-typed tool argument, returning "" for
+// missing or non-string values.
+func stringArg(args map[string]any, key string) string {
+	v, _ := args[key].(string)
+	return v
+}
+
 func registerManagementTools(s *server.MCPServer, rt *runtime.Runtime, cfg *config.Config) {
 	// list
 	listTool := mcp.NewTool("list",
@@ -141,6 +148,72 @@ func registerManagementTools(s *server.MCPServer, rt *runtime.Runtime, cfg *conf
 		return &mcp.CallToolResult{
 			Content: []mcp.Content{mcp.NewTextContent(string(payload))},
 			IsError: isError,
+		}, nil
+	})
+
+	// search — Level-1 capability discovery (§A.10).
+	searchTool := mcp.NewTool("search",
+		mcp.WithDescription(
+			"Level-1 capx capability search. Returns {name, type, summary} for matching caps. "+
+				"All filter fields are optional; an empty call returns every visible cap "+
+				"(useful as a dictionary source for prompt-easy/typefree).",
+		),
+		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithString("query", mcp.Description("Substring match over name, description, aliases, keywords")),
+		mcp.WithString("type", mcp.Description("Filter to 'mcp' or 'cli'"), mcp.Enum("mcp", "cli")),
+		mcp.WithString("tag", mcp.Description("Filter to caps with this tag")),
+		mcp.WithString("scene", mcp.Description("Restrict to caps visible in this scene")),
+	)
+	s.AddTool(searchTool, func(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := req.GetArguments()
+		query := config.SearchQuery{
+			Query: stringArg(args, "query"),
+			Type:  stringArg(args, "type"),
+			Tag:   stringArg(args, "tag"),
+			Scene: stringArg(args, "scene"),
+		}
+		results, err := cfg.Search(query)
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{mcp.NewTextContent(fmt.Sprintf("error: %v", err))},
+				IsError: true,
+			}, nil
+		}
+		payload, _ := json.MarshalIndent(results, "", "  ")
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{mcp.NewTextContent(string(payload))},
+		}, nil
+	})
+
+	// describe — Level-2 capability detail (§A.10).
+	describeTool := mcp.NewTool("describe",
+		mcp.WithDescription(
+			"Level-2 capx capability detail. Returns full metadata for one cap, "+
+				"optionally resolved against a specific scene to disambiguate inline overrides.",
+		),
+		mcp.WithReadOnlyHintAnnotation(true),
+		mcp.WithString("name", mcp.Required(), mcp.Description("Capability name")),
+		mcp.WithString("scene", mcp.Description("Optional scene context (resolves inline overrides)")),
+	)
+	s.AddTool(describeTool, func(_ context.Context, req mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		args := req.GetArguments()
+		name := stringArg(args, "name")
+		if name == "" {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{mcp.NewTextContent("error: 'name' argument is required")},
+				IsError: true,
+			}, nil
+		}
+		detail, err := cfg.Describe(name, stringArg(args, "scene"))
+		if err != nil {
+			return &mcp.CallToolResult{
+				Content: []mcp.Content{mcp.NewTextContent(fmt.Sprintf("error: %v", err))},
+				IsError: true,
+			}, nil
+		}
+		payload, _ := json.MarshalIndent(detail, "", "  ")
+		return &mcp.CallToolResult{
+			Content: []mcp.Content{mcp.NewTextContent(string(payload))},
 		}, nil
 	})
 
