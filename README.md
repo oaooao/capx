@@ -15,6 +15,11 @@ capabilities without restarting the agent.
 
 capx replaces that with: declare everything once in `.capx/`, compose scenes, switch via an MCP tool.
 
+## Requirements
+
+- Go 1.26+ (see [`go.mod`](go.mod))
+- An MCP-capable agent: Claude Code, Codex CLI, or any client that speaks MCP over stdio
+
 ## Quick Start
 
 ```bash
@@ -87,10 +92,37 @@ not already visible in the current tool set, the agent should proactively
 intentionally do not embed dynamic capability lists; use `scene_info`, `search`,
 and `describe` for current state.
 
+### Placeholder tools — inactive capabilities stay discoverable
+
+Every declared-but-inactive capability registers a single-action placeholder
+tool named `mcp__capx__<name>`. Its description is the capability's
+description, so the agent sees a one-line summary of every available capability
+from session start — not just the ones in the active scene.
+
+```
+mcp__capx__<name>   action: describe | enable
+```
+
+- `describe` — returns metadata (type, command, env, keywords) without starting
+  the backend. Use it to decide whether this capability fits the task.
+- `enable` — activates the capability and registers its real tools. The
+  placeholder disappears and real tools appear as `mcp__capx__<name>__<tool>`
+  (two-segment namespace). `disable` restores the placeholder.
+
+This closes the discoverability gap most MCP aggregators leave open: without
+placeholders, agents only find out about inactive capabilities if they
+proactively call `search` — which they rarely do. With placeholders, the
+capability's description advertises itself directly in the tool list.
+
+Write capability descriptions that tell the agent *what it can do*, not just
+*what it is* — see [`docs/AUTHORING.md`](docs/AUTHORING.md) for the
+TOC-style convention.
+
 Prefer interactive operation? Install the companion skill and use `/capx`:
 
 ```bash
-cp -r skills/capx ~/.claude/skills/
+git clone https://github.com/oaooao/capx.git
+cp -r capx/skills/capx ~/.claude/skills/
 ```
 
 ## Configuration Layout
