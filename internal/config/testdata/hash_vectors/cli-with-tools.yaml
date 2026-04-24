@@ -1,0 +1,25 @@
+type: cli
+command: webx
+description: Unified web runtime
+tools:
+  webx_read:
+    description: Read and extract content from a URL
+    args:
+      - read
+    params:
+      url:
+        type: string
+        required: true
+        description: Target URL
+      format:
+        type: string
+        required: false
+        enum: [markdown, json]
+  webx_search:
+    description: Search across platforms
+    args:
+      - search
+    params:
+      query:
+        type: string
+        required: true
