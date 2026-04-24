@@ -21,6 +21,14 @@ type Config struct {
 	// legacy layout this is populated from the top-level YAML; in the
 	// directory layout it is populated from settings.yaml.
 	Settings *Settings `yaml:"-"`
+
+	// Warnings collected during load/merge (v0.2). Not serialized.
+	Warnings []Warning `yaml:"-"`
+
+	// ScopeRoots records the resolved absolute paths of each contributing
+	// scope (global, project, CAPX_HOME, or legacy single-file). Used by
+	// `capx where` to render the merge trace. Not serialized.
+	ScopeRoots map[ScopeKind]string `yaml:"-"`
 }
 
 // Settings holds global settings stored in settings.yaml (v0.2).
