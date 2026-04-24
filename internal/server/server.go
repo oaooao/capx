@@ -54,6 +54,8 @@ At the start of a session, call scene_info to inspect the current workbench: act
 
 Scenes shape the agent's default tool choices; they are not hard filters. If a task needs a capability that is not currently ready, use search to discover candidates, describe to inspect one, then enable it for this session. Use set_scene when the whole task context changes.
 
+If the user asks to use, call, invoke, run, or launch a named MCP, CLI, command, tool, or capability, and that named capability is not already visible in the current tool set or you are unsure, proactively search capx for it before giving up or substituting another tool.
+
 set_scene returns ok, rejected, or partial_failure. Always inspect failed[] and degradation fields before assuming the switch succeeded.
 `)
 }

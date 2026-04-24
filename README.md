@@ -49,9 +49,14 @@ During MCP initialization, capx also sends concise server instructions that
 explain the mental model to the agent: capx is a capability runtime, call
 `scene_info` at session start, use `search → describe → enable` when a task
 needs a missing capability, and inspect the three-state `set_scene` result
-instead of treating it as a boolean. These instructions intentionally do not
-embed dynamic capability lists; use `scene_info`, `search`, and `describe` for
-current state.
+instead of treating it as a boolean.
+
+The instructions also define a capability-resolution trigger: if the user asks
+to use/call/invoke/run a named MCP, CLI, command, tool, or capability that is
+not already visible in the current tool set, the agent should proactively
+`search` capx before giving up or substituting another tool. These instructions
+intentionally do not embed dynamic capability lists; use `scene_info`, `search`,
+and `describe` for current state.
 
 Prefer interactive operation? Install the companion skill and use `/capx`:
 

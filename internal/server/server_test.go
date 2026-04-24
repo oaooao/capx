@@ -16,6 +16,8 @@ func TestBuildInstructions(t *testing.T) {
 		"call scene_info",
 		"Scenes shape the agent's default tool choices",
 		"search to discover candidates",
+		"If the user asks to use, call, invoke, run, or launch",
+		"named MCP, CLI, command, tool, or capability",
 		"set_scene returns ok, rejected, or partial_failure",
 	} {
 		if !strings.Contains(instructions, want) {
