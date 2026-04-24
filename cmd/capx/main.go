@@ -297,9 +297,13 @@ func cmdDump() {
 
 	pwd, _ := os.Getwd()
 	if configDir != "" {
-		// --config overrides discovery: treat the path as CAPX_HOME for
-		// this invocation.
+		// --config asks "show me what's in this directory only". That's
+		// single-scope semantics, so we set BOTH CAPX_HOME (relocates
+		// global) and CAPX_ISOLATE=1 (skips project discovery). Without
+		// ISOLATE, an ambient .capx/ walking up from pwd would leak into
+		// the dump and contradict the user's intent.
 		os.Setenv("CAPX_HOME", configDir)
+		os.Setenv("CAPX_ISOLATE", "1")
 	}
 	cfg, err := config.LoadMerged(pwd)
 	if err != nil {
@@ -403,7 +407,11 @@ Flags:
   --config <path>             v0.1 config file path (default: ~/.config/capx/config.yaml)
 
 Environment:
-  CAPX_HOME                   Single-scope override (bypasses global+project discovery)
+  CAPX_HOME                   Replace global scope directory (~/.config/capx by default).
+                              Project .capx/ discovery still applies on top.
+  CAPX_ISOLATE                Set to 1 to force single-scope mode (skip project
+                              discovery). Use with CAPX_HOME for tests, CI, or
+                              diagnosing configs without project overrides.
   CAPX_CONFIG                 Legacy v0.1 config file path override
   CAPX_SCENE                  Scene to use at startup`)
 }

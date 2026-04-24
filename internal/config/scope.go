@@ -41,41 +41,46 @@ type Warning struct {
 	Message string
 }
 
-// DiscoverResult lists all candidate config paths for the current invocation,
-// ordered from lowest to highest priority.
+// DiscoverResult lists all candidate config paths for the current invocation.
 type DiscoverResult struct {
-	// CAPXHome, if non-empty, overrides everything else (explicit escape hatch).
+	// CAPXHome records the resolved absolute path of $CAPX_HOME if it was set.
+	// Informational — the Global field below is set to the same value, and
+	// downstream consumers should use Global for scope loading.
 	CAPXHome string
 
-	// Global is the XDG/global scope directory. Empty if neither the directory
-	// nor the legacy single-file exists.
+	// Global is the resolved global scope directory. When CAPX_HOME is set it
+	// equals CAPXHome; otherwise it is the default $XDG_CONFIG_HOME/capx or
+	// $HOME/.config/capx. Empty if neither the directory nor a legacy
+	// single-file exists.
 	Global string
 
 	// Project is the nearest `.capx/` directory walking up from PWD. Empty if
-	// none found before reaching the filesystem root.
+	// none found before reaching the filesystem root, or if CAPX_ISOLATE=1.
 	Project string
 
-	// LegacyGlobalSingleFile is the path to ~/.config/capx/config.yaml if it
-	// exists (v0.1 single-file compat). Mutually exclusive with a v0.2 new
-	// directory structure in the global scope (enforced by LoadMerged in B1.3).
+	// LegacyGlobalSingleFile is the path to <global>/config.yaml if it exists
+	// (v0.1 single-file compat). Mutually exclusive with a v0.2 new directory
+	// structure in the same global scope (enforced by LoadMerged).
 	LegacyGlobalSingleFile string
 }
 
 // DiscoverConfig resolves which scopes to load based on environment and $PWD.
 //
-// Priority (high → low):
-//  1. $CAPX_HOME — explicit override; if set and points to a valid directory,
-//     it becomes the ONLY scope (no merge).
-//  2. Project — nearest `.capx/` walking up from pwd.
-//  3. Global — $XDG_CONFIG_HOME/capx/ or fallback $HOME/.config/capx/.
+// Priority (low → high, merged by LoadMerged):
+//  1. Global — $XDG_CONFIG_HOME/capx/ or $HOME/.config/capx/, overridden by
+//     $CAPX_HOME if set. CAPX_HOME does NOT skip project discovery; it only
+//     relocates the global scope.
+//  2. Project — nearest `.capx/` walking up from pwd. Skipped if
+//     $CAPX_ISOLATE=1 (single-scope mode for tests, CI, and diagnostics).
 //
-// Legacy v0.1 single-file (~/.config/capx/config.yaml) is reported separately
-// in LegacyGlobalSingleFile and combined with Global by LoadMerged as the
-// legacy global scope when the new directory structure is absent.
+// Legacy v0.1 single-file (<global>/config.yaml) is reported separately in
+// LegacyGlobalSingleFile and combined with Global by LoadMerged as the legacy
+// global scope when the new directory structure is absent.
 func DiscoverConfig(pwd string) (*DiscoverResult, error) {
 	res := &DiscoverResult{}
 
-	// 1. CAPX_HOME
+	// 1. Determine the global scope directory (CAPX_HOME overrides default).
+	var globalDir string
 	if home := strings.TrimSpace(os.Getenv("CAPX_HOME")); home != "" {
 		abs, err := filepath.Abs(home)
 		if err != nil {
@@ -89,16 +94,12 @@ func DiscoverConfig(pwd string) (*DiscoverResult, error) {
 			return nil, fmt.Errorf("CAPX_HOME %q is not a directory", abs)
 		}
 		res.CAPXHome = abs
-		return res, nil
+		globalDir = abs
+	} else {
+		globalDir = GlobalConfigDir()
 	}
 
-	// 2. Project
-	if projectDir := FindProjectScope(pwd); projectDir != "" {
-		res.Project = projectDir
-	}
-
-	// 3. Global
-	globalDir := GlobalConfigDir()
+	// 2. Report global dir / legacy single-file if they exist on disk.
 	if _, err := os.Stat(globalDir); err == nil {
 		res.Global = globalDir
 	}
@@ -107,7 +108,22 @@ func DiscoverConfig(pwd string) (*DiscoverResult, error) {
 		res.LegacyGlobalSingleFile = legacy
 	}
 
+	// 3. Project scope — skipped under CAPX_ISOLATE=1.
+	if !IsolateMode() {
+		if projectDir := FindProjectScope(pwd); projectDir != "" {
+			res.Project = projectDir
+		}
+	}
+
 	return res, nil
+}
+
+// IsolateMode reports whether $CAPX_ISOLATE=1. When true, DiscoverConfig
+// skips project `.capx/` discovery, collapsing scope to just the global
+// layer. Intended for tests, CI, and quick diagnostics where you want a
+// deterministic single-scope view regardless of where pwd is.
+func IsolateMode() bool {
+	return os.Getenv("CAPX_ISOLATE") == "1"
 }
 
 // GlobalConfigDir returns the global config directory: $XDG_CONFIG_HOME/capx

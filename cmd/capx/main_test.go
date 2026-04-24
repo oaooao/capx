@@ -50,14 +50,18 @@ func writeV02Scope(t *testing.T, caps, scenes, settings string) string {
 }
 
 // runCLI executes this test binary as the capx CLI with the given args.
-// It isolates the environment via CAPX_HOME so global/project scopes don't
-// leak into the test.
+// It isolates the environment via CAPX_HOME + CAPX_ISOLATE=1 so project
+// `.capx/` discovery walking up from the developer's cwd doesn't leak in.
 func runCLI(t *testing.T, capxHome string, args ...string) (string, error) {
 	t.Helper()
 	cmd := exec.Command(os.Args[0], args...)
 	cmd.Env = append(os.Environ(),
 		"BE_CAPX_CLI=1",
 		"CAPX_HOME="+capxHome,
+		// CAPX_HOME only replaces the global scope; without ISOLATE=1, a
+		// .capx/ somewhere above the test runner's cwd would silently merge
+		// in and make the test non-deterministic.
+		"CAPX_ISOLATE=1",
 		// Defensively unset CAPX_CONFIG so a developer-shell value never
 		// flips loadConfig into legacy single-file mode mid-test.
 		"CAPX_CONFIG=",
@@ -165,6 +169,7 @@ default_scene: default
 	cmd.Env = append(os.Environ(),
 		"BE_CAPX_CLI=1",
 		"CAPX_HOME="+scopeDir,
+		"CAPX_ISOLATE=1",
 		"CAPX_CONFIG="+legacyPath,
 	)
 	out, err := cmd.CombinedOutput()

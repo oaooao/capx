@@ -328,8 +328,12 @@ default_scene: default
 	}
 }
 
-// TestLoadMerged_CAPXHomeShortCircuit: CAPX_HOME overrides both scopes.
-func TestLoadMerged_CAPXHomeShortCircuit(t *testing.T) {
+// TestLoadMerged_CAPXHomeReplacesGlobalKeepsProject verifies the new
+// CAPX_HOME semantics: CAPX_HOME replaces the global scope directory, but
+// project .capx/ discovery still applies. global-only (from the default
+// global) is ignored because CAPX_HOME overrides it; home-only (from the
+// CAPX_HOME dir) and project-only both appear.
+func TestLoadMerged_CAPXHomeReplacesGlobalKeepsProject(t *testing.T) {
 	pwd, _, _ := setupGlobalAndProject(t,
 		map[string]string{
 			"capabilities.yaml": `
@@ -348,7 +352,7 @@ capabilities:
 `,
 		},
 	)
-	// Create a separate CAPX_HOME with its own content.
+	// Separate CAPX_HOME with its own content.
 	home, err := os.MkdirTemp("", "capx-override-*")
 	if err != nil {
 		t.Fatal(err)
@@ -363,21 +367,66 @@ capabilities:
 		t.Fatal(err)
 	}
 	t.Setenv("CAPX_HOME", home)
+	t.Setenv("CAPX_ISOLATE", "")
 	cfg, err := LoadMerged(pwd)
 	if err != nil {
 		t.Fatalf("LoadMerged: %v", err)
 	}
 	if cfg.Capabilities["home-only"] == nil {
-		t.Fatal("home-only (from CAPX_HOME) missing")
+		t.Error("home-only (from CAPX_HOME) missing")
+	}
+	if cfg.Capabilities["project-only"] == nil {
+		t.Error("project-only (from project .capx/) should remain; CAPX_HOME no longer short-circuits")
 	}
 	if cfg.Capabilities["global-only"] != nil {
-		t.Error("global-only should have been ignored (CAPX_HOME short-circuits)")
-	}
-	if cfg.Capabilities["project-only"] != nil {
-		t.Error("project-only should have been ignored (CAPX_HOME short-circuits)")
+		t.Error("global-only should be ignored (CAPX_HOME replaced the global dir)")
 	}
 	if root := cfg.ScopeRoots[ScopeKindGlobal]; root == "" {
 		t.Error("ScopeRoots[Global] should record CAPX_HOME path")
+	}
+	if root := cfg.ScopeRoots[ScopeKindProject]; root == "" {
+		t.Error("ScopeRoots[Project] should record project .capx/ path")
+	}
+}
+
+// TestLoadMerged_CAPXHomeWithIsolate verifies CAPX_ISOLATE=1 restores the
+// single-scope behavior (project discovery skipped).
+func TestLoadMerged_CAPXHomeWithIsolate(t *testing.T) {
+	pwd, _, _ := setupGlobalAndProject(t,
+		nil,
+		map[string]string{
+			"capabilities.yaml": `
+capabilities:
+  project-only:
+    type: cli
+    command: p
+`,
+		},
+	)
+	home, err := os.MkdirTemp("", "capx-override-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(home) })
+	if err := os.WriteFile(filepath.Join(home, "capabilities.yaml"), []byte(`
+capabilities:
+  home-only:
+    type: cli
+    command: h
+`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("CAPX_HOME", home)
+	t.Setenv("CAPX_ISOLATE", "1")
+	cfg, err := LoadMerged(pwd)
+	if err != nil {
+		t.Fatalf("LoadMerged: %v", err)
+	}
+	if cfg.Capabilities["home-only"] == nil {
+		t.Error("home-only (from CAPX_HOME) missing")
+	}
+	if cfg.Capabilities["project-only"] != nil {
+		t.Error("project-only should be skipped under CAPX_ISOLATE=1")
 	}
 }
 

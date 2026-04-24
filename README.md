@@ -129,9 +129,19 @@ cp -r capx/skills/capx ~/.claude/skills/
 
 capx discovers config in this order (lowest → highest priority):
 
-1. **Global** — `~/.config/capx/` (or `$XDG_CONFIG_HOME/capx/`)
-2. **Project** — nearest `.capx/` walking up from `$PWD`
-3. **Override** — `$CAPX_HOME` bypasses both layers if set
+1. **Global** — `~/.config/capx/` (or `$XDG_CONFIG_HOME/capx/`); relocated by
+   `$CAPX_HOME` when set
+2. **Project** — nearest `.capx/` walking up from `$PWD`; merged on top of
+   global
+
+Environment overrides:
+
+- `CAPX_HOME=<dir>` — replaces the default global scope directory. Project
+  discovery still applies on top. Use when you want to store your global
+  config somewhere other than `~/.config/capx/` (e.g. under a dotfiles repo).
+- `CAPX_ISOLATE=1` — force single-scope mode (skip project `.capx/` discovery).
+  Pair with `CAPX_HOME` for tests, CI, or diagnosing config issues without
+  project overrides creeping in.
 
 Each `.capx/` directory looks like:
 
@@ -300,8 +310,9 @@ Migration is FS-atomic (two `rename(2)` calls with rollback), resolves symlinks
 
 ## Status
 
-v0.2 is stable for personal use. Expect rough edges around multi-platform
-packaging, CI, and release binaries — contributions welcome.
+v1.0.0 — first public release. Stable for personal use. Contributions
+welcome for multi-platform packaging, CI, and release binary distribution.
+See [`CHANGELOG.md`](CHANGELOG.md) for release notes.
 
 ## License
 

@@ -10,35 +10,21 @@ import (
 // loads each, then merges them into a single Config.
 //
 // Priority order (low → high):
-//  1. Global scope (~/.config/capx/ or $XDG_CONFIG_HOME/capx/)
-//  2. Project scope (nearest .capx/ walking up from pwd)
-//
-// If $CAPX_HOME is set, it replaces BOTH scopes (the directory it points to
-// is treated as the single authoritative scope, kind=global).
+//  1. Global scope — $XDG_CONFIG_HOME/capx/ or $HOME/.config/capx/, or
+//     $CAPX_HOME if set (CAPX_HOME only relocates the directory; merge
+//     semantics below still apply).
+//  2. Project scope — nearest `.capx/` walking up from pwd. Skipped when
+//     $CAPX_ISOLATE=1 (single-scope mode, see DiscoverConfig).
 //
 // v0.1 legacy compatibility:
-//   - If only a single-file ~/.config/capx/config.yaml exists (no new dir
+//   - If only a single-file <global>/config.yaml exists (no v0.2 dir
 //     structure), it is loaded as the global scope.
 //   - If BOTH the legacy config.yaml AND a v0.2 new structure exist in the
-//     global scope, LoadMerged returns an error (A.14 forbids coexistence).
+//     same global dir, LoadMerged returns an error (A.14 forbids coexistence).
 func LoadMerged(pwd string) (*Config, error) {
 	disc, err := DiscoverConfig(pwd)
 	if err != nil {
 		return nil, err
-	}
-
-	// CAPX_HOME short-circuits everything.
-	if disc.CAPXHome != "" {
-		scope, err := LoadScope(ScopeKindGlobal, disc.CAPXHome)
-		if err != nil {
-			return nil, fmt.Errorf("CAPX_HOME scope %q: %w", disc.CAPXHome, err)
-		}
-		cfg := mergeScopes(nil, scope)
-		cfg.ScopeRoots = map[ScopeKind]string{ScopeKindGlobal: disc.CAPXHome}
-		if err := ValidateAllCapabilities(cfg); err != nil {
-			return nil, err
-		}
-		return cfg, nil
 	}
 
 	// Global scope handling: detect coexistence and load appropriately.

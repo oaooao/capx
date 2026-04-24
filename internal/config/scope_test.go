@@ -318,26 +318,102 @@ func TestFindProjectScope_NotFound(t *testing.T) {
 	}
 }
 
-// TestDiscoverConfig_CAPXHome verifies CAPX_HOME short-circuits.
-func TestDiscoverConfig_CAPXHome(t *testing.T) {
+// TestDiscoverConfig_CAPXHome_ReplacesGlobal verifies CAPX_HOME relocates the
+// global scope directory but does NOT short-circuit project discovery.
+func TestDiscoverConfig_CAPXHome_ReplacesGlobal(t *testing.T) {
 	dir, err := os.MkdirTemp("", "capx-home-*")
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { os.RemoveAll(dir) })
 
+	// pwd under a clean temp dir so there's no .capx/ anywhere above it.
+	pwdDir, err := os.MkdirTemp("", "capx-pwd-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(pwdDir) })
+
 	t.Setenv("CAPX_HOME", dir)
-	res, err := DiscoverConfig("/tmp")
+	t.Setenv("CAPX_ISOLATE", "")
+
+	res, err := DiscoverConfig(pwdDir)
 	if err != nil {
 		t.Fatalf("DiscoverConfig: %v", err)
 	}
 	wantReal, _ := filepath.EvalSymlinks(dir)
-	resReal, _ := filepath.EvalSymlinks(res.CAPXHome)
-	if resReal != wantReal && res.CAPXHome != dir {
+
+	// CAPXHome flag is set (informational).
+	if resReal, _ := filepath.EvalSymlinks(res.CAPXHome); resReal != wantReal && res.CAPXHome != dir {
 		t.Errorf("CAPXHome = %q, want %q", res.CAPXHome, dir)
 	}
-	if res.Project != "" || res.Global != "" {
-		t.Errorf("CAPX_HOME should short-circuit; got Project=%q Global=%q", res.Project, res.Global)
+	// Global field is now populated with the CAPX_HOME path (authoritative).
+	if resReal, _ := filepath.EvalSymlinks(res.Global); resReal != wantReal && res.Global != dir {
+		t.Errorf("Global = %q, want CAPX_HOME = %q", res.Global, dir)
+	}
+	// Project should be empty when pwd has no .capx/ ancestor.
+	if res.Project != "" {
+		t.Errorf("Project should be empty, got %q", res.Project)
+	}
+}
+
+// TestDiscoverConfig_CAPXHome_KeepsProject verifies project .capx/ is still
+// discovered when CAPX_HOME is set (no CAPX_ISOLATE).
+func TestDiscoverConfig_CAPXHome_KeepsProject(t *testing.T) {
+	home, err := os.MkdirTemp("", "capx-home-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(home) })
+
+	pwd, err := os.MkdirTemp("", "capx-pwd-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(pwd) })
+	projectCapx := filepath.Join(pwd, ".capx")
+	if err := os.Mkdir(projectCapx, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("CAPX_HOME", home)
+	t.Setenv("CAPX_ISOLATE", "")
+
+	res, err := DiscoverConfig(pwd)
+	if err != nil {
+		t.Fatalf("DiscoverConfig: %v", err)
+	}
+	if res.Project == "" {
+		t.Errorf("Project should be discovered alongside CAPX_HOME; got empty")
+	}
+}
+
+// TestDiscoverConfig_IsolateSkipsProject: CAPX_ISOLATE=1 forces single-scope.
+func TestDiscoverConfig_IsolateSkipsProject(t *testing.T) {
+	home, err := os.MkdirTemp("", "capx-home-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(home) })
+
+	pwd, err := os.MkdirTemp("", "capx-pwd-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { os.RemoveAll(pwd) })
+	if err := os.Mkdir(filepath.Join(pwd, ".capx"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	t.Setenv("CAPX_HOME", home)
+	t.Setenv("CAPX_ISOLATE", "1")
+
+	res, err := DiscoverConfig(pwd)
+	if err != nil {
+		t.Fatalf("DiscoverConfig: %v", err)
+	}
+	if res.Project != "" {
+		t.Errorf("CAPX_ISOLATE=1 should skip project discovery; got Project=%q", res.Project)
 	}
 }
 
