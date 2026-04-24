@@ -45,6 +45,14 @@ mcp__capx__enable         Runtime enable
 mcp__capx__disable        Runtime disable
 ```
 
+During MCP initialization, capx also sends concise server instructions that
+explain the mental model to the agent: capx is a capability runtime, call
+`scene_info` at session start, use `search → describe → enable` when a task
+needs a missing capability, and inspect the three-state `set_scene` result
+instead of treating it as a boolean. These instructions intentionally do not
+embed dynamic capability lists; use `scene_info`, `search`, and `describe` for
+current state.
+
 Prefer interactive operation? Install the companion skill and use `/capx`:
 
 ```bash
