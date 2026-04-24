@@ -127,15 +127,20 @@ func registerManagementTools(s *server.MCPServer, rt *runtime.Runtime, cfg *conf
 			}, nil
 		}
 
-		if err := rt.SetScene(ctx, sceneName); err != nil {
+		// SetScene always returns a structured result; err is non-nil only on
+		// StatusRejected, in which case the result carries the diagnostic.
+		result, _ := rt.SetScene(ctx, sceneName)
+		payload, mErr := json.MarshalIndent(result, "", "  ")
+		if mErr != nil {
 			return &mcp.CallToolResult{
-				Content: []mcp.Content{mcp.NewTextContent(fmt.Sprintf("error: %v", err))},
+				Content: []mcp.Content{mcp.NewTextContent(fmt.Sprintf("error encoding result: %v", mErr))},
 				IsError: true,
 			}, nil
 		}
-
+		isError := result.Status == runtime.StatusRejected
 		return &mcp.CallToolResult{
-			Content: []mcp.Content{mcp.NewTextContent(fmt.Sprintf("✓ Switched to scene %q\n\n%s", sceneName, rt.GenerateDescription()))},
+			Content: []mcp.Content{mcp.NewTextContent(string(payload))},
+			IsError: isError,
 		}, nil
 	})
 }

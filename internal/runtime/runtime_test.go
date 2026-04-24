@@ -228,7 +228,7 @@ func TestSetScene(t *testing.T) {
 	rt.EnableByScene(ctx, "scene1")
 
 	// Switch to scene2.
-	if err := rt.SetScene(ctx, "scene2"); err != nil {
+	if _, err := rt.SetScene(ctx, "scene2"); err != nil {
 		t.Fatalf("SetScene failed: %v", err)
 	}
 
