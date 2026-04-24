@@ -40,6 +40,8 @@ func main() {
 		cmdInit()
 	case "dump":
 		cmdDump()
+	case "migrate":
+		cmdMigrate()
 	case "version":
 		fmt.Printf("capx %s\n", version)
 	case "help", "--help", "-h":
@@ -298,6 +300,27 @@ func cmdDump() {
 		fmt.Print(string(payload))
 	default:
 		fmt.Fprintf(os.Stderr, "unsupported --format %q (json | yaml)\n", format)
+		os.Exit(1)
+	}
+}
+
+func cmdMigrate() {
+	opts := setup.MigrateOptions{}
+	for i := 2; i < len(os.Args); i++ {
+		switch os.Args[i] {
+		case "--dry-run":
+			opts.DryRun = true
+		default:
+			fmt.Fprintf(os.Stderr, "unknown flag: %s\n", os.Args[i])
+			os.Exit(1)
+		}
+	}
+	report, err := setup.Migrate(opts)
+	if report != nil {
+		payload, _ := json.MarshalIndent(report, "", "  ")
+		fmt.Println(string(payload))
+	}
+	if err != nil {
 		os.Exit(1)
 	}
 }
